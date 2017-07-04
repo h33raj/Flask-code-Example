@@ -1,0 +1,29 @@
+<html>
+    <head>
+        <title>C00l f0rm</title>
+        <link rel=stylesheet type=text/css href="{{ url_for('static', filename='style.css') }}">
+    </head>
+    <body>
+        <div id="contain er">
+            <div class="title">
+                <h1>C00l f0rm</h1>
+            </div>
+            <div id="content">
+                <form method="post" action="{{ url_for('hello') }}">
+                  <label for="yourname">Please enter your name:</label>
+                  <input type="text" name="yourname" /><br />
+                  <label for="youremail">Please enter your email:</label>
+                  <input type="text" name="youremail" /><br />
+                  <input type="submit" />
+                </form> 
+            </div>
+            <div class="title">
+                <h1>About</h1>
+            </div>
+                <code>It is not an Static page, it is more than that!! :p<pre>
+                </pre></code>
+            </div>
+        </div>
+    </body>
+</html>
+ 
