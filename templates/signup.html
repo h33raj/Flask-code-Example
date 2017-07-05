@@ -34,6 +34,7 @@
             <input type="email" name="inputEmail" id="inputEmail" class="form-control" placeholder="Email address" required autofocus>
             <label for="inputPassword" class="sr-only">Password</label>
             <input type="password" name="inputPassword" id="inputPassword" class="form-control" placeholder="Password" required> 
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <button id="btnSignUp" class="btn btn-lg btn-primary btn-block" type="button">Sign up</button>
         </form>
       </div>
