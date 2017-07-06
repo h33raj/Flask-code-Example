@@ -1,4 +1,6 @@
 import os
+from OpenSSL import SSL, rand
+import base64
 from flask import render_template, flash
 from flask import Flask, render_template,request, redirect
 from flask import url_for,send_from_directory
@@ -7,11 +9,16 @@ from flask_wtf.csrf import CSRFProtect, CSRFError
 
 #Intialize the flask application
 app = Flask(__name__)
-app.secret_key = 'flag{blah_blah_blah}'
-
+app.secret_key = "hrj"
 #To Register CSRF protection globally for the app
 csrf = CSRFProtect()
 csrf.init_app(app)
+
+#Configurations
+#Strictly protection on SSL, Referrer
+app.config['WTF_CSRF_SSL_STRICT'] = True 
+#A random string for generating CSRF token
+app.config['WTF_CSRF_SECRET_KEY'] = base64.b64encode(rand.bytes(128)) 
 
 #The path to the upload directory
 app.config['UPLOAD_FOLDER'] = 'uploads/'
