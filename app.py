@@ -1,6 +1,7 @@
 import os
 from OpenSSL import SSL, rand
 import base64
+from flask import escape
 from flask import render_template, flash
 from flask import Flask, render_template,request, redirect
 from flask import url_for,send_from_directory
@@ -94,6 +95,11 @@ def home():
 @app.route("/upload")
 def upload():
     return render_template('file_upload.html')
+"""
+@app.route('/')
+def index():
+    return escape("<html></html>")
+"""
 
 @app.route("/")
 def main():
@@ -119,6 +125,12 @@ def security_Headers(response):
 @app.errorhandler(CSRFError)
 def handle_csrf_error(e):
     return render_template('csrf_error.html', reason=e.description), 400
+
+@app.route('/xss', methods=['GET', 'POST'])
+def xss():
+    if request.method == 'GET':
+        return render_template('xss.html')
+    return render_template('xss.html', user=request.form['xss'])
 
 if __name__ ==    "__main__": 
     app.run()

@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<h3>A demonstration of protecting XSS</h3>
+
+<form method="POST" action="">
+  First name: <input type="text" name="xss" value="Donald"><br>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+  <input type="submit" value="Submit">
+</form>
+
+<p id={{user}}>Hi, {{ user }} </p>
+
+
+</body>
+</html>
