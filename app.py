@@ -278,5 +278,16 @@ def login():
     flash('Logged in successfully')
     return render_template('home.html', user=request.form['inputName'])
 
+#Logout a user
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    return render_template('index.html')
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.get(user_id)
+
 if __name__ ==    "__main__": 
     app.run()
