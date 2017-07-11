@@ -2,10 +2,12 @@ import os
 from OpenSSL import SSL, rand
 import base64
 from flask import escape
+from datetime import datetime
 from flask import render_template, flash
 from flask import Flask, render_template,request, redirect
 from flask import url_for,send_from_directory
 from werkzeug.utils import secure_filename
+from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect, CSRFError
 
 #Intialize the flask application
@@ -32,24 +34,70 @@ It makes it easy to maintain whenever you want to apply changes for
 certain input validation roles and reduces the chance of mistakes in your regexes.
 """
 
-class validate(object):
-    def __init__(self):
-        self.pattern = ""
+#Will track modifications of objects and emit signals
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
+#Database URI is used for connection
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
+#Create object of SQL Alchemy
+db = SQLAlchemy(app)
 
-    def inputValidation(self, type, value, level):
-        switcher = {
-            "alphanumeric": "^[a-zA-Z0-9]+$",
-            "nummeric": "^[0-9]*$",
-            "bool": "^(true|false)$"
-        }
-        self.pattern = switcher.get(type, "nothing")
-        match = re.findall(self.pattern, value)
-        if match:
-            return True
+def checkPassword(pwd):
+    error = []
+    proceed = True
+    #Recommended a longer password for Security
+    if(len(pwd) < 8):
+        error.append("Password is too Short!!")
+        proceed = False
+    
+    """
+    The password should include at least one number, a small letter, a CAPS,
+    and a special character as defined in the patterns array:
+    """
+    if not any(x.isupper() for x in pwd):
+        error.append('Your password needs at least 1 capital letter')
+    if not any(x.islower() for x in pwd):
+        error.append('Your password needs at least 1 small letter')
+    if not any(x.isdigit() for x in pwd):
+        error.append('Your password needs at least 1 digit')
+
+    """
+    Even though your password is sufficient according to all your standards, the password could still be weak.
+    Just imagine the password "Password!"; this could easily be guessed by an attacker. To prevent the use of weak passwords we 
+    compare the password with a list of top 500 bad passwords and if matched, the password wil be rejected:
+    """
+
+    file = open('badpasswords.txt').read()
+    pattern = file.split(",") 
+
+    for value in pattern:
+        if value != pwd:
+            pass
         else:
-            raise Exception("User supplied value not in the range " + range)
+            error.append("Your password was matched with the bad password list, please try again.")
+            proceed = False
+            break
 
+    if proceed == True:
+        flash("Your password is allowed!")
+        return True
+    else:
+        flash("Password validation failure(your choise is weak):")
+        for x in error:
+            print x
+        return False
 
+def inputValidation(type, value, level):
+    switcher = {
+        "alphanumeric": "^[a-zA-Z0-9]+$",
+        "nummeric": "^[0-9]*$",
+        "bool": "^(true|false)$"
+    }
+    pattern = switcher.get(type, "nothing")
+    match = re.findall(pattern, value)
+    if match:
+        return True
+    else:
+        raise Exception("User supplied value not in the range " + range)
 
 
 #Check whether the file can be uploaded
@@ -131,6 +179,68 @@ def xss():
     if request.method == 'GET':
         return render_template('xss.html')
     return render_template('xss.html', user=request.form['xss'])
+
+class privileges(db.Model):
+    __tablename__ = "privileges"
+    id = db.Column(db.Integer , primary_key=True)
+    privilege = db.Column('privilege', db.String(20), unique=False, index=True)
+
+    def __init__(self, privilege):
+        self.privilege = privilege
+
+class User(db.Model):
+    __tablename__ = "users"
+    id = db.Column('user_id',db.Integer , primary_key=True)
+    username = db.Column('username', db.String(20), unique=True , index=True)
+    password = db.Column('password' , db.String(10))
+    email = db.Column('email',db.String(50),unique=True , index=True)
+    registered_on = db.Column('registered_on' , db.DateTime)
+    privilegeID = db.Column('privilegeID', db.Integer, db.ForeignKey('privileges.id'))
+ 
+    def __init__(self , username ,password , email, privilegeID):
+        self.username = username
+        self.password = password
+        self.email = email
+        self.registered_on = datetime.utcnow()
+        self.privilegeID = privilegeID
+
+    def is_authenticated(self):
+        return True
+ 
+    def is_active(self):
+        return True
+ 
+    def is_anonymous(self):
+        return False
+ 
+    def get_id(self):
+        return unicode(self.id)
+ 
+    def __repr__(self):
+        return '<User %r>' % (self.username)
+
+#Uncomment when the app is installed, after that comment
+"""
+db.create_all()
+permission = ['edit:read:delete','edit:read', 'read']
+for x in permission:
+    privilege = privileges(x)
+    db.session.add(privilege)
+    db.session.commit()
+"""
+
+def userRegister(username, password, email, privilegeID):
+    user = User(username, password, email, privilegeID)
+    db.session.add(user)
+    db.session.commit()
+
+@app.route('/register' , methods=['GET','POST'])
+def register():
+    if request.method == 'GET':
+        return render_template('signup.html')
+    userRegister(request.form['inputName'] , request.form['inputPassword'],request.form['inputEmail'], 3)
+    flash('User successfully registered')
+    return render_template('home.html', user=request.form['inputName'])
 
 if __name__ ==    "__main__": 
     app.run()
