@@ -141,6 +141,7 @@ def upload_file():
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
+@login_required
 @app.route("/home")
 def home():
     return render_template('home.html')
@@ -278,16 +279,16 @@ def login():
     flash('Logged in successfully')
     return render_template('home.html', user=request.form['inputName'])
 
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(user_id)
+
 #Logout a user
 @app.route("/logout")
 @login_required
 def logout():
     logout_user()
     return render_template('index.html')
-
-@login_manager.user_loader
-def load_user(user_id):
-    return User.get(user_id)
 
 if __name__ ==    "__main__": 
     app.run()
