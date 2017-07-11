@@ -1,13 +1,14 @@
 import os
-from OpenSSL import SSL, rand
 import base64
 from flask import escape
 from datetime import datetime
+from OpenSSL import SSL, rand
 from flask import render_template, flash
 from flask import Flask, render_template,request, redirect
 from flask import url_for,send_from_directory
 from werkzeug.utils import secure_filename
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import login_user, LoginManager, UserMixin, logout_user, login_required
 from flask_wtf.csrf import CSRFProtect, CSRFError
 
 #Intialize the flask application
@@ -16,6 +17,10 @@ app.secret_key = "hrj"
 #To Register CSRF protection globally for the app
 csrf = CSRFProtect()
 csrf.init_app(app)
+
+#Instantiating Flask Login
+login_manager = LoginManager()
+login_manager.init_app(app)
 
 #Configurations
 #Strictly protection on SSL, Referrer
@@ -243,6 +248,7 @@ def userRegister(username, password, email, privilegeID):
     db.session.add(user)
     db.session.commit()
 
+#Register a user
 @app.route('/register' , methods=['GET','POST'])
 def register():
     if request.method == 'GET':
@@ -257,6 +263,20 @@ def setLog(userId, error, value, date, privilege, threat):
     f.write(date + str(userId) + error + value + privilege + threat)
     f.close()
 
+#Login a user
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'GET':
+        return render_template('login.html')
+    username = request.form['inputName']
+    password = request.form['inputPassword']
+    registered_user = User.query.filter_by(username=username, password=password).first()
+    if registered_user is None:
+        flash('Username or Password is invalid' , 'error')
+        return redirect(url_for('login'))
+    login_user(registered_user)
+    flash('Logged in successfully')
+    return render_template('home.html', user=request.form['inputName'])
 
 if __name__ ==    "__main__": 
     app.run()
