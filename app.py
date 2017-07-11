@@ -219,9 +219,18 @@ class User(db.Model):
     def __repr__(self):
         return '<User %r>' % (self.username)
 
+"""
+class Counter(db.Model):
+    __tablename__ = "counter"
+    count = db.Column(db.Integer, nullable=False)
+    blocker = 
+"""
+
+
+db.create_all()
+
 #Uncomment when the app is installed, after that comment
 """
-db.create_all()
 permission = ['edit:read:delete','edit:read', 'read']
 for x in permission:
     privilege = privileges(x)
@@ -241,6 +250,13 @@ def register():
     userRegister(request.form['inputName'] , request.form['inputPassword'],request.form['inputEmail'], 3)
     flash('User successfully registered')
     return render_template('home.html', user=request.form['inputName'])
+
+def setLog(userId, error, value, date, privilege, threat):
+    file = "restrictedfolder/logfile.txt"
+    f = open(file, 'w+')
+    f.write(date + str(userId) + error + value + privilege + threat)
+    f.close()
+
 
 if __name__ ==    "__main__": 
     app.run()
