@@ -13,7 +13,7 @@ from flask_wtf.csrf import CSRFProtect, CSRFError
 
 #Intialize the flask application
 app = Flask(__name__)
-app.secret_key = "hrj"
+app.secret_key = base64.b64encode(rand.bytes(128)) 
 #To Register CSRF protection globally for the app
 csrf = CSRFProtect()
 csrf.init_app(app)
@@ -263,6 +263,8 @@ def setLog(userId, error, value, date, privilege, threat):
     f = open(file, 'w+')
     f.write(date + str(userId) + error + value + privilege + threat)
     f.close()
+
+    
 
 #Login a user
 @app.route('/login', methods=['GET', 'POST'])
