@@ -1,15 +1,16 @@
 import os
+import re
 import base64
 from flask import escape
 from datetime import datetime
 from OpenSSL import SSL, rand
-from flask import render_template, flash
-from flask import Flask, render_template,request, redirect
-from flask import url_for,send_from_directory
-from werkzeug.utils import secure_filename
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import login_user, LoginManager, UserMixin, logout_user, login_required
+from flask import render_template, flash
+from werkzeug.utils import secure_filename
+from flask import url_for,send_from_directory
 from flask_wtf.csrf import CSRFProtect, CSRFError
+from flask import Flask, render_template,request, redirect
+from flask_login import login_user, LoginManager, UserMixin, logout_user, login_required
 
 #Intialize the flask application
 app = Flask(__name__)
@@ -91,7 +92,55 @@ def checkPassword(pwd):
             print x
         return False
 
-def inputValidation(type, value, level):
+"""
+    This is the encoder class for whenever you have to allow certain
+    possibly dangerous characters into your code for i.e names such as O'reily
+"""
+
+def encoder(allowed, input, count):
+    """
+        As you can see you can specify allowed characters in your function
+    """
+    flag = True
+    match = re.findall("/^[a-zA-Z0-9 " + allowed+"]+$/", input)
+    if match:
+        """
+        Set a log for whenever there is unexpected userinput with a threat level
+        See "audit logs" code example for more information:
+        """
+        setLog(session['id'], "Bad userinputssss", "FAIL", datetime.utcnow(), "HIGH")
+        """
+        Set counter if counter hits 3 the users session must terminated
+        After 3 session terminations the user account must be blocked
+        See "audit logs" code example for more information:
+        """
+        counter.increment()
+        flag = False
+        return escape(input)
+
+"""
+    First we create a function which checks the allowed patterns:
+        checkpattern("value1,value2,value3" , $input, "3")
+"""
+
+def whitelisting(allowed, input, count):
+    result = allowed.split(',')
+    flag = False
+    for x in result:
+        match = re.findall("/^"+x+"$/", input)
+        if match:
+            #If the value is valid we send a log to the logging file
+            setLog(session["id"], "Good whitelist validation", "SUCCESS", datetime.utcnow(),"HIGH")
+            flag = True
+            #Whenever there was a valid match we return true
+            return True
+        #Check for a false in order to send error to log and counter the user
+        if flag == False:
+            setLog(session["id"], "Bad whitelist validation", "FAIL", datetime.utcnow(), "HIGH")            
+            counter.increment()
+            return False     
+
+def inputValidation(type, value):
     switcher = {
         "alphanumeric": "^[a-zA-Z0-9]+$",
         "nummeric": "^[0-9]*$",
@@ -200,15 +249,17 @@ class User(db.Model):
     username = db.Column('username', db.String(20), unique=True , index=True)
     password = db.Column('password' , db.String(10))
     email = db.Column('email',db.String(50),unique=True , index=True)
+    status = db.Column('status', db.String(50), index=True)
     registered_on = db.Column('registered_on' , db.DateTime)
     privilegeID = db.Column('privilegeID', db.Integer, db.ForeignKey('privileges.id'))
  
-    def __init__(self , username ,password , email, privilegeID):
+    def __init__(self , username ,password , email, privilegeID, status):
         self.username = username
         self.password = password
         self.email = email
         self.registered_on = datetime.utcnow()
         self.privilegeID = privilegeID
+        self.status = status
 
     def is_authenticated(self):
         return True
@@ -225,13 +276,30 @@ class User(db.Model):
     def __repr__(self):
         return '<User %r>' % (self.username)
 
-"""
 class Counter(db.Model):
     __tablename__ = "counter"
     count = db.Column(db.Integer, nullable=False)
-    blocker = 
-"""
+    blocker = db.Column(db.Integer, nullable=False)
+    userID = db.Column('userID', db.Integer, db.ForeignKey('users.user_id'), primary_key=True)
 
+    def __init__(self, count, blocker, userID):
+        self.count = count 
+        self.blocker = blocker
+        self.userID = userID
+
+    def increment(self):
+        self.count+= self.count
+        self.blocker+= self.blocker
+
+        if self.counter >= 3:
+            setLog(self.userId,"The users session was terminated", "SUCCESS", datetime.utcnow(), "NULL")
+            self.count = 0
+            logout()
+
+        if self.blocker >= 12:
+            setLog(self.userId,"The users is denied access to system", "SUCCESS", datetime.utcnow(), "NULL")
+            user = User.query.filter_by(id=self.userID).first()
+            user.status = 'Blocked'
 
 db.create_all()
 
@@ -244,8 +312,8 @@ for x in permission:
     db.session.commit()
 """
 
-def userRegister(username, password, email, privilegeID):
-    user = User(username, password, email, privilegeID)
+def userRegister(username, password, email, privilegeID, status):
+    user = User(username, password, email, privilegeID, status)
     db.session.add(user)
     db.session.commit()
 
@@ -254,17 +322,15 @@ def userRegister(username, password, email, privilegeID):
 def register():
     if request.method == 'GET':
         return render_template('signup.html')
-    userRegister(request.form['inputName'] , request.form['inputPassword'],request.form['inputEmail'], 3)
+    userRegister(request.form['inputName'] , request.form['inputPassword'],request.form['inputEmail'], 3, "Active")
     flash('User successfully registered')
     return render_template('home.html', user=request.form['inputName'])
 
-def setLog(userId, error, value, date, privilege, threat):
+def setLog(userId, error, value, date, threat):
     file = "restrictedfolder/logfile.txt"
     f = open(file, 'w+')
-    f.write(date + str(userId) + error + value + privilege + threat)
+    f.write(date + str(userId) + error + value + threat)
     f.close()
-
-    
 
 #Login a user
 @app.route('/login', methods=['GET', 'POST'])
@@ -273,12 +339,18 @@ def login():
         return render_template('login.html')
     username = request.form['inputName']
     password = request.form['inputPassword']
+    if inputValidation('alphanumeric', username) != True:
+                setLog(0, "invalid expected input", "FAIL", str(datetime.utcnow()), "HIGH");
+                return redirect(url_for('login'))
     registered_user = User.query.filter_by(username=username, password=password).first()
     if registered_user is None:
         flash('Username or Password is invalid' , 'error')
         return redirect(url_for('login'))
+    #Logged In Successfully
     login_user(registered_user)
     flash('Logged in successfully')
+    counter = Counter(0, 0, registered_user.id)
+    session['id'] = registered_user.id
     return render_template('home.html', user=request.form['inputName'])
 
 @login_manager.user_loader
@@ -290,7 +362,7 @@ def load_user(user_id):
 @login_required
 def logout():
     logout_user()
-    return render_template('index.html')
+    return render_template('index.html')    
 
 if __name__ ==    "__main__": 
     app.run()
