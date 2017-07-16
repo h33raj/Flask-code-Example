@@ -118,6 +118,15 @@ def encoder(allowed, input, count):
         flag = False
         return escape(input)
 
+def send(whitelisting, input, count):
+        """
+        We want to whitelist the paged for expected values, in this example they are,
+        page1,page2 etc.. for more information about whitelisting see "white-listing" in the code examples:
+        """
+            if whitelisting(whitelisting, input, count) == True:
+                response.headers['location'] = input
+                return response 
+
 """
     First we create a function which checks the allowed patterns:
         checkpattern("value1,value2,value3" , $input, "3")
@@ -153,6 +162,46 @@ def inputValidation(type, value):
     else:
         raise False
 
+"""
+    Define the whitelist pattern and validation type and input parameter like:
+    getFiles("value1,value2,etc", "alphanummeric", $_GET['filename'], "3")
+"""
+"""
+def command(whitelist, validation, input):
+    continue = True
+"""
+"""
+    Whenever a system command is finished, you should properly sanitize and escape this user input.
+    System command functions examples are: system(), eval(), exec()
+    First, we want to filter the filenames for expected values. For this example we use only a-z/0-9
+    Whenever the values are tampered with, we can assume an attacker is trying to inject malicious input.
+    for more information about validation see "input validations" in the code examples:
+    
+    if inputValidation(input, validation, ):
+"""
+
+def countAccess(count):
+    """
+    Everytime the user accesses the database we keep track of the number of times he
+    connected. Whenever the user passes a reasonable number he should be rejected
+    since he could be an attacker scraping your table contents and stealing company information
+    You could a CRON job in your mysql system in order to clean the Aggregate column within certain timeframes
+    """
+    setLog(session['id'], "User access database ", "SUCCESS", datetime.utcnow(), "NULL")
+    registered_user = User.query.filter_by(id=session['id']).first()
+    # We add the count to control variable for the update
+    control = registered_user.AggregateControl + count
+    # Check the aggregate
+    if control > 5000:
+        setLog(session['id'], "Aggregate control breach", "FAIL", date("d-m-y"), "HIGH")
+        """
+        Then we lock out the users account assuming it has been compromised by
+        an attacker
+        """
+        access = "Fail"
+        registered_user.status = access
+    #we update the users table and count +1 tot the AggregateControl column
+    registered_user.AggregateControl = control
 
 #Check whether the file can be uploaded
 def allowed_file(filename):
@@ -251,6 +300,7 @@ class User(db.Model):
     email = db.Column('email',db.String(50),unique=True , index=True)
     status = db.Column('status', db.String(50), index=True)
     registered_on = db.Column('registered_on' , db.DateTime)
+    AggregateControl = db.Column('aggregate', db.Integer, index=True)
     privilegeID = db.Column('privilegeID', db.Integer, db.ForeignKey('privileges.id'))
  
     def __init__(self , username ,password , email, privilegeID, status):

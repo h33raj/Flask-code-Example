@@ -1,7 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>Python Flask Bucket List App</title>
+    {% if title %}
+    <title>{{ title }} - microblog</title>
+    {% else %}
+    <title>Welcome to microblog</title>
+    {% endif %}
     <script src="https://code.jquery.com/jquery-3.2.1.js"></script>  
     <script src='../static/js/index.js'></script>    
     <link href="http://getbootstrap.com/dist/css/bootstrap.min.css" rel="stylesheet">
