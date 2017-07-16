@@ -151,7 +151,7 @@ def inputValidation(type, value):
     if match:
         return True
     else:
-        raise Exception("User supplied value not in the range " + range)
+        raise False
 
 
 #Check whether the file can be uploaded
