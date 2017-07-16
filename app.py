@@ -1,9 +1,9 @@
 import os
 import re
 import base64
-from flask import escape
 from datetime import datetime
 from OpenSSL import SSL, rand
+from flask import escape, session
 from flask_sqlalchemy import SQLAlchemy
 from flask import render_template, flash
 from werkzeug.utils import secure_filename
@@ -324,7 +324,7 @@ def register():
         return render_template('signup.html')
     userRegister(request.form['inputName'] , request.form['inputPassword'],request.form['inputEmail'], 3, "Active")
     flash('User successfully registered')
-    return render_template('home.html', user=request.form['inputName'])
+    return redirect(url_for('login'))
 
 def setLog(userId, error, value, date, threat):
     file = "restrictedfolder/logfile.txt"
