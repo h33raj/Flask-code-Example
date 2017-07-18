@@ -8,6 +8,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask import render_template, flash
 from werkzeug.utils import secure_filename
 from flask import url_for,send_from_directory
+from flask_kvsession import KVSessionExtension
 from flask_wtf.csrf import CSRFProtect, CSRFError
 from flask import Flask, render_template,request, redirect
 from flask_login import login_user, LoginManager, UserMixin, logout_user, login_required
@@ -22,6 +23,12 @@ csrf.init_app(app)
 #Instantiating Flask Login
 login_manager = LoginManager()
 login_manager.init_app(app)
+
+"""
+# Apply the extension to our app
+mitten = Mitten(app)
+mitten.banner = "My Nice Banner!"
+"""
 
 #Configurations
 #Strictly protection on SSL, Referrer
@@ -108,7 +115,7 @@ def encoder(allowed, input, count):
         Set a log for whenever there is unexpected userinput with a threat level
         See "audit logs" code example for more information:
         """
-        setLog(session['id'], "Bad userinputssss", "FAIL", datetime.utcnow(), "HIGH")
+        setLog(session['id'], "Bad userinputs", "FAIL", datetime.utcnow(), "HIGH")
         """
         Set counter if counter hits 3 the users session must terminated
         After 3 session terminations the user account must be blocked
@@ -300,7 +307,7 @@ class User(db.Model):
     email = db.Column('email',db.String(50),unique=True , index=True)
     status = db.Column('status', db.String(50), index=True)
     registered_on = db.Column('registered_on' , db.DateTime)
-    AggregateControl = db.Column('aggregate', db.Integer, index=True)
+    #AggregateControl = db.Column('aggregate', db.Integer, index=True)
     privilegeID = db.Column('privilegeID', db.Integer, db.ForeignKey('privileges.id'))
  
     def __init__(self , username ,password , email, privilegeID, status):
@@ -355,7 +362,7 @@ class track_sessions(db.Model):
     __tablename__ = "track_sessions"
     id = db.Column('user_id',db.Integer , primary_key=True)
     userID = db.Column('userID', db.Integer, db.ForeignKey('users.user_id'), primary_key=True)
-    session = db.Column('session', db.String(50), index=True)
+    session = db.Column('session', db.String(500), index=True)
     ipaddress = db.Column('ip', db.String(50), index=True)
 
     def __init__(self, userID, session, ipaddress):
@@ -402,8 +409,8 @@ def login():
     username = request.form['inputName']
     password = request.form['inputPassword']
     if inputValidation('alphanumeric', username) != True:
-                setLog(0, "invalid expected input", "FAIL", str(datetime.utcnow()), "HIGH");
-                return redirect(url_for('login'))
+        setLog(0, "invalid expected input", "FAIL", str(datetime.utcnow()), "HIGH");
+        return redirect(url_for('login'))
     registered_user = User.query.filter_by(username=username, password=password).first()
     if registered_user is None:
         flash('Username or Password is invalid' , 'error')
@@ -413,6 +420,7 @@ def login():
     flash('Logged in successfully')
     counter = Counter(0, 0, registered_user.id)
     session['id'] = registered_user.id
+    session['status'] = registered_user.status
     return render_template('home.html', user=request.form['inputName'])
 
 @login_manager.user_loader
@@ -425,6 +433,42 @@ def load_user(user_id):
 def logout():
     logout_user()
     return render_template('index.html')    
+
+def checkSession():
+    #To check whether the user is active
+    if session['status'] != "active" or session['status'] == "":
+        return redirect(url_for('login'))
+
+    """
+        Then we start the rest of the function where we will check if there are multiple
+        users/IP addresses using the same session id
+    """
+    
+    # Store the current session
+    session = request.cookies.get('session')
+
+    # Get user ip address
+    ipaddress = request.remote_addr
+
+    trackSession = track_sessions.query.filter_by(ipaddress = ipaddress).first()
+    if trackSession.session == ipaddress:
+        return """<div style='border-style:solid; border-color:black; color:white; background-color:red; float:left;'>
+                <p>There are other active sessions on other IP-addresses.<br/>
+                Your session could be hijacked press logout in order to authenticate again
+                for security reasons!
+                <br/><br/>
+                <a href='/logout'>Terminate sessions</a>
+                <br/>
+                <a href='/Proceed'>Proceed anyway</a>
+                </p>
+                </div>"""
+
+    """
+    The only thing left to do now is to update your track_sessions table by inserting
+    the IP address, sessionID and userID if you want to accept the other sessions as valid.
+    Otherwise the user just has to terminate his current session in order to lock out the
+    other sessions.
+    """
 
 if __name__ ==    "__main__": 
     app.run()
