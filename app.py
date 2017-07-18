@@ -119,13 +119,13 @@ def encoder(allowed, input, count):
         return escape(input)
 
 def send(whitelisting, input, count):
-        """
+    """
         We want to whitelist the paged for expected values, in this example they are,
         page1,page2 etc.. for more information about whitelisting see "white-listing" in the code examples:
-        """
-            if whitelisting(whitelisting, input, count) == True:
-                response.headers['location'] = input
-                return response 
+    """
+    if whitelisting(whitelisting, input, count) == True :
+        response.headers['location'] = input
+        return response 
 
 """
     First we create a function which checks the allowed patterns:
@@ -350,6 +350,18 @@ class Counter(db.Model):
             setLog(self.userId,"The users is denied access to system", "SUCCESS", datetime.utcnow(), "NULL")
             user = User.query.filter_by(id=self.userID).first()
             user.status = 'Blocked'
+
+class track_sessions(db.Model):
+    __tablename__ = "track_sessions"
+    id = db.Column('user_id',db.Integer , primary_key=True)
+    userID = db.Column('userID', db.Integer, db.ForeignKey('users.user_id'), primary_key=True)
+    session = db.Column('session', db.String(50), index=True)
+    ipaddress = db.Column('ip', db.String(50), index=True)
+
+    def __init__(self, userID, session, ipaddress):
+        self.userID = userID
+        self.session = session
+        self.ipaddress = ipaddress
 
 db.create_all()
 
