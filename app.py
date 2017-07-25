@@ -39,7 +39,7 @@ app.config['WTF_CSRF_SECRET_KEY'] = base64.b64encode(rand.bytes(128))
 #The path to the upload directory
 app.config['UPLOAD_FOLDER'] = 'uploads/'
 #Extensions which are accepted to be uploaded
-app.config['ALLOWED_EXTENSIONS'] = set(['png', 'jpg', 'jpeg', 'pdf'])
+app.config['ALLOWED_EXTENSIONS'] = set(['png', 'jpg', 'jpeg', 'pdf', 'txt'])
 
 """
 This function is where you store all your input validation controls. 
@@ -244,7 +244,10 @@ def upload_file():
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    try:
+        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    except Exception as e:
+        return redirect(url_for('upload'))
 
 @login_required
 @app.route("/home")
